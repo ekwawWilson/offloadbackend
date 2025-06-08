@@ -1,0 +1,242 @@
+import { Request, Response } from "express";
+import prisma from "../utils/prisma";
+
+export const getContainers = async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user?.companyId;
+
+    if (!companyId) {
+      res.status(400).json({ error: "Company ID is required" });
+      return;
+    }
+
+    const containers = await prisma.container.findMany({
+      where: {
+        companyId,
+        NOT: {
+          status: "Done",
+        },
+      },
+      include: {
+        supplier: {
+          select: { id: true, suppliername: true, country: true }, // Avoid exposing all supplier data
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    res.json(containers);
+    return;
+  } catch (error) {
+    console.error("Error fetching containers:", error);
+    res.status(500).json({ error: "Internal server error" });
+    return;
+  }
+};
+export const createContainer = async (req: Request, res: Response) => {
+  try {
+    const { containerNo, arrivalDate, year, supplierId, items } = req.body;
+    const companyId = req.user!.companyId;
+
+    const container = await prisma.container.create({
+      data: {
+        containerNo,
+        arrivalDate: new Date(arrivalDate),
+        year,
+        supplierId,
+        companyId,
+        items: {
+          create: items.map((item: any) => ({
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+          })),
+        },
+      },
+    });
+
+    res.status(201).json(container);
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: "Failed to create container", detail: err });
+  }
+};
+
+export const getContainerById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const container = await prisma.container.findUnique({
+    where: { id },
+    include: { items: true, supplier: true },
+  });
+
+  if (!container) {
+    res.status(404).json({ error: "Container not found" });
+    return;
+  }
+
+  res.json(container);
+};
+
+export const markContainerAsReceived = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  await prisma.container.update({
+    where: { id },
+    data: { status: "Received" },
+  });
+
+  res.json({ message: "Container marked as received" });
+};
+
+export const markContainerAsIncomplete = async (
+  req: Request,
+  res: Response
+) => {
+  const { id } = req.params;
+
+  await prisma.container.update({
+    where: { id },
+    data: { status: "Incomplete" },
+  });
+
+  res.json({ message: "Container marked as offload Incomplete" });
+};
+
+export const markContainerAsDone = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  await prisma.container.update({
+    where: { id },
+    data: { status: "Done" },
+  });
+
+  res.json({ message: "Container marked as offload done" });
+};
+// DELETE a container
+export const deleteContainer = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    // Delete container items first due to foreign key constraint
+    await prisma.containerItem.deleteMany({ where: { containerId: id } });
+
+    // Delete the container itself
+    await prisma.container.delete({ where: { id } });
+
+    res.json({ message: "Container deleted successfully" });
+  } catch (error) {
+    console.error(error);
+    res
+      .status(400)
+      .json({ error: "Failed to delete container", detail: error });
+  }
+};
+
+// UPDATE received quantities for container items
+export const updateReceivedQuantities = async (req: Request, res: Response) => {
+  const { id } = req.params; // container ID
+  const { items } = req.body; // expected: [{ itemId, receivedQty }, ...]
+
+  try {
+    const updates = await Promise.all(
+      items.map((item: { itemId: string; receivedQty: number }) =>
+        prisma.containerItem.update({
+          where: { id: item.itemId },
+          data: { receivedQty: item.receivedQty },
+        })
+      )
+    );
+
+    res.json({ message: "Received quantities updated", updates });
+  } catch (err) {
+    console.error(err);
+    res.status(400).json({ error: "Failed to update quantities", detail: err });
+  }
+};
+export const completeOffload = async (req: Request, res: Response) => {
+  const containerId = req.params.id;
+  const { items } = req.body;
+
+  const updates = items.map((item: any) =>
+    prisma.containerItem.update({
+      where: { id: item.id },
+      data: {
+        receivedQty: item.receivedQty,
+      },
+    })
+  );
+
+  await Promise.all(updates);
+
+  await prisma.container.update({
+    where: { id: containerId },
+    data: { status: "Done" },
+  });
+
+  res.json({ success: true });
+};
+export const saveOffloadData = async (req: Request, res: Response) => {
+  try {
+    const { containerId, items, isComplete } = req.body;
+
+    for (const item of items) {
+      await prisma.containerItem.updateMany({
+        where: { containerId, itemName: item.itemName },
+        data: {
+          receivedQty: item.receivedQty,
+        },
+      });
+    }
+
+    await prisma.container.update({
+      where: { id: containerId },
+      data: {
+        status: isComplete ? "Done" : "Received",
+      },
+    });
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Offload error:", error);
+    res.status(500).json({ error: "Failed to save offload data" });
+  }
+};
+export const getContainerItems = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const items = await prisma.containerItem.findMany({
+      where: { containerId: id },
+      orderBy: { itemName: "asc" },
+    });
+
+    res.json(items);
+  } catch (err) {
+    console.error("Failed to get container items", err);
+    res.status(500).json({ error: "Failed to get container items" });
+  }
+};
+// GET /api/containers/:id/summary
+export const getOffloadSummary = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const items = await prisma.containerItem.findMany({
+    where: { containerId: id },
+
+    select: {
+      id: true,
+      itemName: true,
+      quantity: true,
+      receivedQty: true,
+    },
+  });
+
+  res.json(
+    items.map((item) => ({
+      id: item.id,
+      name: item.itemName,
+      expected: item.quantity,
+      received: item.receivedQty,
+    }))
+  );
+};
