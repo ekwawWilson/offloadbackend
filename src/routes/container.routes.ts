@@ -12,6 +12,8 @@ import {
   saveOffloadData,
   getContainerItems,
   getOffloadSummary,
+  listContainerItemsWithSales,
+  getContainerSalesSummary,
 } from "../controllers/container.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
@@ -265,4 +267,49 @@ router.get("/:id/items", getContainerItems);
  */
 
 router.get("/:id/summary", getOffloadSummary); // Add this route
+
+/**
+ * @swagger
+ * /containers/{id}/containeritems/withsales:
+ *   get:
+ *     summary: List container items with sales breakdown for a container
+ *     tags:
+ *       - ContainerItems
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the container
+ *     responses:
+ *       200:
+ *         description: List of container items with their received, sold, and remaining quantities
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   itemName:
+ *                     type: string
+ *                   receivedQty:
+ *                     type: number
+ *                   soldQty:
+ *                     type: number
+ *                   remainingQty:
+ *                     type: number
+ *                   unitPrice:
+ *                     type: number
+ *       500:
+ *         description: Internal server error
+ */
+
+router.get("/:id/containeritems/withsales", listContainerItemsWithSales);
+
+router.get("/:id/containersummary", getContainerSalesSummary);
+
 export default router;

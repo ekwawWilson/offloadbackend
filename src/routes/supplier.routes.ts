@@ -10,6 +10,7 @@ import {
   updateSupplierItem,
   deleteSupplierItem,
   getSupplierslist,
+  listSupplierItemsWithSales,
 } from "../controllers/supplier.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
@@ -57,7 +58,7 @@ router.post("/", authenticate, createSupplier);
  *       200:
  *         description: List of suppliers
  */
-router.get("/", authenticate, getSuppliers);
+router.get("/list", authenticate, getSuppliers);
 
 /**
  * @openapi
@@ -249,5 +250,7 @@ router.delete("/items/:id", deleteSupplierItem);
  *         description: Raw list of suppliers
  */
 router.get("/list", getSupplierslist); //
+
+router.get("/items/withsales", listSupplierItemsWithSales);
 
 export default router;

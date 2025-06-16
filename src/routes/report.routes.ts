@@ -3,6 +3,7 @@ import {
   getContainerReport,
   supplierReport,
   detailedSalesReport,
+  getSalesSummaryBySupplier,
 } from "../controllers/report.controller";
 import { authenticate } from "../middlewares/auth.middleware";
 
@@ -71,5 +72,7 @@ router.get("/supplier/:supplierId", supplierReport);
  *         description: Detailed report
  */
 router.get("/detailed", detailedSalesReport);
+
+router.get("/salessummary/supplier", getSalesSummaryBySupplier);
 
 export default router;

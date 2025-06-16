@@ -101,7 +101,7 @@ model Supplier {
 model Sale {
   id           String      @id @default(uuid())
   saleType     String      // "cash" or "credit"
-  sourceType   String      // "container" or "supplier"
+  sourceType   String      // "container" or "regular"
   sourceId     String      // containerId or supplierId
   customerId   String
   companyId    String

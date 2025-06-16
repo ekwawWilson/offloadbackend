@@ -240,3 +240,177 @@ export const getOffloadSummary = async (req: Request, res: Response) => {
     }))
   );
 };
+
+export const listContainerItemsWithSales = async (
+  req: Request,
+  res: Response
+) => {
+  const { id: containerId } = req.params;
+  if (!containerId) {
+    res.status(400).json({ error: "Missing containerId" });
+    return;
+  }
+
+  try {
+    // Step 1: Get container and its supplier
+    const container = await prisma.container.findUnique({
+      where: { id: containerId },
+      include: { supplier: true },
+    });
+
+    if (!container) {
+      res.status(404).json({ error: "Container not found" });
+      return;
+    }
+
+    // Step 2: Get container items
+    const containerItems = await prisma.containerItem.findMany({
+      where: { containerId },
+    });
+
+    // Step 3: Get sales for this container
+    const sales = await prisma.sale.findMany({
+      where: {
+        sourceId: containerId,
+        sourceType: "container",
+      },
+      include: { items: true },
+    });
+
+    // Step 4: Aggregate sold quantities
+    const soldMap: Record<string, number> = {};
+    sales.forEach((sale) => {
+      sale.items.forEach((item) => {
+        soldMap[item.itemName] = (soldMap[item.itemName] || 0) + item.quantity;
+      });
+    });
+
+    // Step 5: Fetch supplier items ONLY for this container's supplier
+    const supplierItems = await prisma.supplierItem.findMany({
+      where: { supplierId: container.supplierId },
+      select: { itemName: true },
+    });
+
+    const supplierItemNames = new Set(
+      supplierItems.map((item) => item.itemName)
+    );
+
+    // Step 6: Final result
+    const result = containerItems.map((item) => {
+      const soldQty = soldMap[item.itemName] || 0;
+      const remainingQty = (item.quantity || 0) - soldQty;
+      const isMatched = supplierItemNames.has(item.itemName);
+      const supplierName = isMatched
+        ? container.supplier.suppliername
+        : "Unknown";
+
+      return {
+        id: item.id,
+        itemName: item.itemName,
+        expectedQty: item.quantity,
+        receivedQty: item.receivedQty,
+        soldQty,
+        remainingQty,
+        unitPrice: item.unitPrice,
+        supplierName,
+      };
+    });
+
+    res.json(result);
+    return;
+  } catch (error) {
+    console.error("Error loading container items with sales:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch container items with sales" });
+    return;
+  }
+};
+
+// Route: GET /api/containers/:id/summary
+export const getContainerSalesSummary = async (req: Request, res: Response) => {
+  try {
+    const containerId = req.params.id;
+
+    // Get container + items
+    const container = await prisma.container.findUnique({
+      where: { id: containerId },
+      include: {
+        supplier: true,
+        items: true,
+      },
+    });
+
+    if (!container) {
+      res.status(404).json({ message: "Container not found" });
+      return;
+    }
+
+    const containerItems = container.items;
+
+    // Get sales and sale items from this container
+    const sales = await prisma.sale.findMany({
+      where: {
+        sourceId: containerId,
+        sourceType: "container",
+      },
+      include: {
+        items: true,
+      },
+    });
+
+    // Flatten and group sale items by itemName
+    const soldItemMap: Record<
+      string,
+      { soldQty: number; totalAmount: number }
+    > = {};
+
+    for (const sale of sales) {
+      for (const item of sale.items) {
+        if (!soldItemMap[item.itemName]) {
+          soldItemMap[item.itemName] = { soldQty: 0, totalAmount: 0 };
+        }
+        soldItemMap[item.itemName].soldQty += item.quantity;
+        soldItemMap[item.itemName].totalAmount +=
+          item.quantity * item.unitPrice;
+      }
+    }
+
+    const itemReport = containerItems.map((item) => {
+      const soldData = soldItemMap[item.itemName] || {
+        soldQty: 0,
+        totalAmount: 0,
+      };
+      const remainingQty = item.quantity - soldData.soldQty;
+
+      return {
+        itemName: item.itemName,
+        expectedQty: item.quantity,
+        receivedQty: item.receivedQty,
+        soldQty: soldData.soldQty,
+        remainingQty,
+        unitPrice: item.unitPrice,
+        totalAmount: soldData.totalAmount,
+      };
+    });
+
+    const totalSales = itemReport.reduce(
+      (sum, item) => sum + item.totalAmount,
+      0
+    );
+
+    res.json({
+      id: container.id,
+      containerNo: container.containerNo,
+      arrivalDate: container.arrivalDate,
+      companyName: container.supplier.suppliername,
+      items: itemReport.filter((i) => i.soldQty > 0), // optional: filter only sold
+      totalSales,
+    });
+    return;
+  } catch (error) {
+    console.error("Error generating container item report:", error);
+    res.status(500).json({ message: "Internal server error" });
+    return;
+  }
+};
