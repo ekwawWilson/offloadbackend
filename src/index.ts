@@ -23,7 +23,11 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middlewares
-app.use(cors());
+app.use(
+  cors({
+    origin: "*", // or restrict to specific frontend origins
+  })
+);
 app.use(express.json());
 
 // Swagger setup
