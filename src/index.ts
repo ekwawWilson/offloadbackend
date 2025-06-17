@@ -41,7 +41,7 @@ const swaggerSpec = swaggerJsdoc({
     },
     servers: [
       {
-        url: "https://offloadbackend.onrender.com/api", // ✅ base path for all routes
+        url: process.env.SWAGGER_SERVER_URL || "http://localhost:4000/api", // ✅ base path for all routes
       },
     ],
     components: {
