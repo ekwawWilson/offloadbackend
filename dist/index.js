@@ -24,7 +24,9 @@ dotenv_1.default.config();
 const app = (0, express_1.default)();
 const PORT = process.env.PORT || 4000;
 // Middlewares
-app.use((0, cors_1.default)());
+app.use((0, cors_1.default)({
+    origin: "*", // or restrict to specific frontend origins
+}));
 app.use(express_1.default.json());
 // Swagger setup
 const swaggerSpec = (0, swagger_jsdoc_1.default)({
@@ -37,7 +39,7 @@ const swaggerSpec = (0, swagger_jsdoc_1.default)({
         },
         servers: [
             {
-                url: "http://localhost:4000/api", // ✅ base path for all routes
+                url: process.env.SWAGGER_SERVER_URL || "http://localhost:4000/api", // ✅ base path for all routes
             },
         ],
         components: {
