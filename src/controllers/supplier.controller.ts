@@ -225,6 +225,7 @@ export const getSupplierslist = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Failed to load suppliers" });
   }
 };
+
 export const listSupplierItemsWithSales = async (
   req: Request,
   res: Response
@@ -237,15 +238,14 @@ export const listSupplierItemsWithSales = async (
       },
     });
 
-    // Step 2: For each supplier item, find container items and aggregate quantities and sales
     const result = [];
 
     for (const sItem of supplierItems) {
-      const { itemName, supplier, price } = sItem;
+      const { id, itemName, supplier, price } = sItem;
       const supplierName = supplier?.suppliername || "Unknown";
       const supplierId = supplier?.id;
 
-      // Step 3: Get all container items that match the item name and supplier
+      // Step 2: Get all container items that match the item name and supplier
       const containerItems = await prisma.containerItem.findMany({
         where: {
           itemName,
@@ -264,7 +264,7 @@ export const listSupplierItemsWithSales = async (
       for (const cItem of containerItems) {
         totalQty += cItem.quantity;
 
-        // Aggregate sold quantity from sale items
+        // Step 3: Aggregate sold quantity from sale items
         const sales = await prisma.saleItem.aggregate({
           _sum: {
             quantity: true,
@@ -283,6 +283,7 @@ export const listSupplierItemsWithSales = async (
       }
 
       result.push({
+        id, // <-- supplierItem.id added here
         itemName,
         supplierName,
         quantity: totalQty,
@@ -293,10 +294,8 @@ export const listSupplierItemsWithSales = async (
     }
 
     res.json(result);
-    return;
   } catch (error) {
     console.error("Error fetching supplier item sales summary:", error);
     res.status(500).json({ error: "Internal server error" });
-    return;
   }
 };
