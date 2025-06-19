@@ -58,7 +58,7 @@ router.post("/", authenticate, createSupplier);
  *       200:
  *         description: List of suppliers
  */
-router.get("/list", authenticate, getSuppliers);
+router.get("/suppliers", authenticate, getSuppliers);
 
 /**
  * @openapi
