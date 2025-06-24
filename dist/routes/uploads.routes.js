@@ -12,4 +12,31 @@ const router = (0, express_1.Router)();
 router.use(auth_middleware_1.authenticate);
 router.post("/container/:id/items", upload.single("file"), upload_controller_1.uploadContainerItems);
 router.post("/supplier/:id/items", upload.single("file"), upload_controller_1.uploadSupplierItems);
+/**
+ * @swagger
+ * /uploads/uploadopeningbalances:
+ *   post:
+ *     summary: Upload customer opening balances from Excel file
+ *     tags:
+ *       - Uploads
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Excel file (.xlsx or .csv) containing customer name, phone, and amount
+ *     responses:
+ *       200:
+ *         description: Opening balances processed successfully
+ *       400:
+ *         description: Validation error or missing data
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/uploadopeningbalances", upload.single("file"), upload_controller_1.uploadOpeningBalances);
 exports.default = router;

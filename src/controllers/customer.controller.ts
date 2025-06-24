@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
+import * as XLSX from "xlsx";
+import { Customer, CustomerPayment } from "@prisma/client";
 
 export const createCustomer = async (req: Request, res: Response) => {
   try {

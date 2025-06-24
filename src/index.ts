@@ -16,6 +16,7 @@ import inventoryRoutes from "./routes/inventory.routes";
 import userRoutes from "./routes/user.routes";
 import auditRoutes from "./routes/audit.routes";
 import reportRoutes from "./routes/report.routes";
+import uploadsRoutes from "./routes/uploads.routes";
 
 dotenv.config();
 
@@ -70,6 +71,7 @@ app.use("/api/sales", saleRoutes);
 app.use("/api/payments", customerPaymentRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/uploads", uploadsRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/audit", auditRoutes);
 
