@@ -251,6 +251,20 @@ router.delete("/items/:id", deleteSupplierItem);
  */
 router.get("/list", getSupplierslist);
 
+/**
+ * @openapi
+ * /suppliers/allsuppliers:
+ *   get:
+ *     tags: [Suppliers]
+ *     summary: Get full supplier list for the logged-in user's company
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Raw list of suppliers
+ */
+router.get("/allsuppliers", getSuppliers);
+
 router.get("/items/withsales", listSupplierItemsWithSales);
 
 export default router;
