@@ -35,7 +35,7 @@ router.use(auth_middleware_1.authenticate);
 router.post("/", auth_middleware_1.authenticate, supplier_controller_1.createSupplier);
 /**
  * @openapi
- * /suppliers:
+ * /suppliers/allsuppliers:
  *   get:
  *     tags: [Suppliers]
  *     summary: List all suppliers for the logged-in user's company
@@ -45,7 +45,7 @@ router.post("/", auth_middleware_1.authenticate, supplier_controller_1.createSup
  *       200:
  *         description: List of suppliers
  */
-router.get("/list", auth_middleware_1.authenticate, supplier_controller_1.getSuppliers);
+router.get("/allsuppliers", auth_middleware_1.authenticate, supplier_controller_1.getSuppliers);
 /**
  * @openapi
  * /suppliers/{id}:

@@ -40,6 +40,7 @@ const createContainer = async (req, res) => {
     try {
         const { containerNo, arrivalDate, year, supplierId, items } = req.body;
         const companyId = req.user.companyId;
+        await upsertSupplierItems(supplierId, items); // Ensure SupplierItems are updated
         const container = await prisma_1.default.container.create({
             data: {
                 containerNo,
@@ -361,3 +362,32 @@ const getContainerSalesSummary = async (req, res) => {
     }
 };
 exports.getContainerSalesSummary = getContainerSalesSummary;
+const upsertSupplierItems = async (supplierId, items) => {
+    for (const item of items) {
+        const existing = await prisma_1.default.supplierItem.findFirst({
+            where: {
+                supplierId,
+                itemName: item.itemName,
+            },
+        });
+        if (existing) {
+            // Update price if different
+            if (existing.price !== item.unitPrice) {
+                await prisma_1.default.supplierItem.update({
+                    where: { id: existing.id },
+                    data: { price: item.unitPrice },
+                });
+            }
+        }
+        else {
+            // Insert new item
+            await prisma_1.default.supplierItem.create({
+                data: {
+                    supplierId,
+                    itemName: item.itemName,
+                    price: item.unitPrice,
+                },
+            });
+        }
+    }
+};

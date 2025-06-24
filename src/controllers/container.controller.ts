@@ -37,6 +37,7 @@ export const createContainer = async (req: Request, res: Response) => {
   try {
     const { containerNo, arrivalDate, year, supplierId, items } = req.body;
     const companyId = req.user!.companyId;
+
     await upsertSupplierItems(supplierId, items); // Ensure SupplierItems are updated
 
     const container = await prisma.container.create({
