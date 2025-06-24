@@ -227,6 +227,6 @@ router.delete("/items/:id", supplier_controller_1.deleteSupplierItem);
  *       200:
  *         description: Raw list of suppliers
  */
-router.get("/list", supplier_controller_1.getSupplierslist); //
+router.get("/list", supplier_controller_1.getSupplierslist);
 router.get("/items/withsales", supplier_controller_1.listSupplierItemsWithSales);
 exports.default = router;
