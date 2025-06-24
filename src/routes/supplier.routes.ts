@@ -48,7 +48,7 @@ router.post("/", authenticate, createSupplier);
 
 /**
  * @openapi
- * /suppliers/allsuppliers:
+ * /suppliers:
  *   get:
  *     tags: [Suppliers]
  *     summary: List all suppliers for the logged-in user's company
@@ -58,7 +58,7 @@ router.post("/", authenticate, createSupplier);
  *       200:
  *         description: List of suppliers
  */
-router.get("/allsuppliers", authenticate, getSuppliers);
+router.get("/", authenticate, getSuppliers);
 
 /**
  * @openapi
