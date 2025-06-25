@@ -4,6 +4,7 @@ import { authenticate } from "../middlewares/auth.middleware";
 import {
   uploadContainerItems,
   uploadOpeningBalances,
+  uploadOpeningStockItems,
   uploadSupplierItems,
 } from "../controllers/upload.controller";
 
@@ -50,5 +51,53 @@ router.post(
   upload.single("file"),
   uploadOpeningBalances
 );
+
+/**
+ * @swagger
+ * /uploads/opening-stock:
+ *   post:
+ *     summary: Upload item opening stock from Excel
+ *     tags:
+ *       - Opening Stock
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Excel file (.xlsx) with opening stock items
+ *     responses:
+ *       200:
+ *         description: Opening stock items processed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 added:
+ *                   type: number
+ *                   example: 10
+ *                 skipped:
+ *                   type: number
+ *                   example: 5
+ *                 failedItems:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       itemName:
+ *                         type: string
+ *                       reason:
+ *                         type: string
+ *       400:
+ *         description: Missing file or validation failed
+ *       500:
+ *         description: Internal server error
+ */
+router.post("/opening-stock", upload.single("file"), uploadOpeningStockItems);
 
 export default router;
