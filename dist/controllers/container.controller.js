@@ -15,9 +15,6 @@ const getContainers = async (req, res) => {
         const containers = await prisma_1.default.container.findMany({
             where: {
                 companyId,
-                NOT: {
-                    status: "Done",
-                },
             },
             include: {
                 supplier: {

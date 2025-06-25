@@ -209,6 +209,7 @@ const uploadOpeningStockItems = async (req, res) => {
             const suppliername = row.suppliername?.toString().trim();
             const itemname = row.itemname?.toString().trim();
             const quantity = Number(row.quantity);
+            const price = parseFloat(row.price?.toString() ?? "");
             if (!suppliername || !itemname || !quantity || isNaN(quantity)) {
                 failedItems.push({ ...row, reason: "Missing or invalid data" });
                 continue;
@@ -236,7 +237,7 @@ const uploadOpeningStockItems = async (req, res) => {
                     data: {
                         supplierId: supplier.id,
                         itemName: itemname,
-                        price: 0,
+                        price: price,
                     },
                 });
             }
@@ -281,7 +282,7 @@ const uploadOpeningStockItems = async (req, res) => {
                     quantity,
                     receivedQty: quantity,
                     soldQty: 0,
-                    unitPrice: 0,
+                    unitPrice: price,
                 },
             });
             addedItems++;

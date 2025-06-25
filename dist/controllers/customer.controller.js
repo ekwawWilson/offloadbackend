@@ -13,13 +13,33 @@ const createCustomer = async (req, res) => {
             res.status(400).json({ error: "Company ID missing" });
             return;
         }
+        // Check for duplicates by name and phone within the same company
+        const existingCustomer = await prisma_1.default.customer.findFirst({
+            where: {
+                customerName: customerName,
+                phone: phone,
+                companyId: companyId,
+            },
+        });
+        if (existingCustomer) {
+            res.status(409).json({
+                error: "Customer already exists with this name and phone number.",
+            });
+            return;
+        }
         const customer = await prisma_1.default.customer.create({
             data: { customerName, phone, companyId },
         });
         res.status(201).json(customer);
+        return;
     }
     catch (err) {
-        res.status(400).json({ error: "Failed to create customer", detail: err });
+        console.error("Customer creation error:", err);
+        res.status(500).json({
+            error: "Failed to create customer",
+            detail: err instanceof Error ? err.message : err,
+        });
+        return;
     }
 };
 exports.createCustomer = createCustomer;
