@@ -54,7 +54,7 @@ router.post(
 
 /**
  * @swagger
- * /uploads/opening-stock:
+ * /uploads/openingstock:
  *   post:
  *     summary: Upload item opening stock from Excel
  *     tags:
@@ -98,6 +98,6 @@ router.post(
  *       500:
  *         description: Internal server error
  */
-router.post("/opening-stock", upload.single("file"), uploadOpeningStockItems);
+router.post("/openingstock", upload.single("file"), uploadOpeningStockItems);
 
 export default router;
