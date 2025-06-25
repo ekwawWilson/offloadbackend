@@ -103,74 +103,87 @@ const uploadSupplierItems = async (req, res) => {
     }
 };
 exports.uploadSupplierItems = uploadSupplierItems;
+// 🧾 Upload Opening Balances from Excel
 const uploadOpeningBalances = async (req, res) => {
+    const file = req.file;
+    const companyId = req.user?.companyId;
+    if (!file) {
+        res.status(400).json({ error: "Excel file is required" });
+        return;
+    }
+    if (!companyId) {
+        res.status(400).json({ error: "Missing company context" });
+        return;
+    }
     try {
-        const file = req.file; // uploaded file via multer
-        const companyId = req.user?.companyId; // assuming you set this in auth middleware
-        if (!file) {
-            res.status(400).json({ error: "No file uploaded." });
-            return;
-        }
-        if (!companyId) {
-            res.status(400).json({ error: "Missing company context." });
-            return;
-        }
         const workbook = XLSX.read(file.buffer, { type: "buffer" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet);
+        const errors = [];
         for (const row of rows) {
             const name = row.CustomerName?.toString()?.trim();
             const phone = row.Phone?.toString()?.trim();
             const amount = parseFloat(row.Amount?.toString() ?? "");
-            if (!name || !phone || isNaN(amount))
+            if (!name || !phone || isNaN(amount)) {
+                errors.push(row);
                 continue;
-            // Check if customer exists
-            let customer = await prisma_1.default.customer.findFirst({
-                where: { customerName: name, phone, companyId },
-            });
-            // Create if not found
-            if (!customer) {
-                customer = await prisma_1.default.customer.create({
-                    data: {
-                        customerName: name,
-                        phone,
-                        companyId,
-                    },
-                });
             }
-            // Check if opening balance already exists
-            const existingPayment = await prisma_1.default.customerPayment.findFirst({
-                where: {
-                    customerId: customer.id,
-                    note: "Opening balance",
-                },
-            });
-            if (existingPayment) {
-                // Update the amount
-                await prisma_1.default.customerPayment.update({
-                    where: { id: existingPayment.id },
-                    data: { amount },
+            try {
+                // Check or create customer
+                let customer = await prisma_1.default.customer.findFirst({
+                    where: { customerName: name, phone, companyId },
                 });
-            }
-            else {
-                // Create new opening balance
-                await prisma_1.default.customerPayment.create({
-                    data: {
+                if (!customer) {
+                    customer = await prisma_1.default.customer.create({
+                        data: { customerName: name, phone, companyId },
+                    });
+                }
+                // Check if opening balance already exists
+                const existingPayment = await prisma_1.default.customerPayment.findFirst({
+                    where: {
                         customerId: customer.id,
-                        amount,
                         note: "Opening balance",
-                        companyId,
                     },
                 });
+                if (existingPayment) {
+                    await prisma_1.default.customerPayment.update({
+                        where: { id: existingPayment.id },
+                        data: { amount },
+                    });
+                }
+                else {
+                    await prisma_1.default.customerPayment.create({
+                        data: {
+                            customerId: customer.id,
+                            amount,
+                            note: "Opening balance",
+                            companyId,
+                        },
+                    });
+                }
+            }
+            catch (innerErr) {
+                console.error("Row processing error:", innerErr);
+                errors.push(row);
             }
         }
-        res.json({ message: "Opening balances uploaded successfully." });
-        return;
+        if (errors.length > 0) {
+            res.status(207).json({
+                message: "Opening balances processed with some errors",
+                invalidRows: errors,
+            });
+        }
+        else {
+            res
+                .status(201)
+                .json({ message: "Opening balances uploaded successfully" });
+        }
     }
-    catch (error) {
-        console.error("Upload failed:", error);
-        res.status(500).json({ error: "Upload failed." });
-        return;
+    catch (err) {
+        console.error("Upload failed:", err);
+        res
+            .status(500)
+            .json({ error: "Failed to process opening balances", detail: err });
     }
 };
 exports.uploadOpeningBalances = uploadOpeningBalances;
