@@ -14,7 +14,7 @@ export const getContainers = async (req: Request, res: Response) => {
       where: {
         companyId,
         NOT: {
-          status: "Done",
+          status: "",
         },
       },
       include: {

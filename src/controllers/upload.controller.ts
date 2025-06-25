@@ -182,6 +182,7 @@ export const uploadOpeningBalances = async (
       .json({ error: "Failed to process opening balances", detail: err });
   }
 };
+
 // POST /upload/opening-stock
 export const uploadOpeningStockItems = async (req: Request, res: Response) => {
   try {
@@ -203,6 +204,7 @@ export const uploadOpeningStockItems = async (req: Request, res: Response) => {
       suppliername: string;
       itemname: string;
       quantity: number;
+      price: number;
     }>(sheet);
 
     let addedItems = 0;
@@ -213,6 +215,7 @@ export const uploadOpeningStockItems = async (req: Request, res: Response) => {
       const suppliername = row.suppliername?.toString().trim();
       const itemname = row.itemname?.toString().trim();
       const quantity = Number(row.quantity);
+      const price = parseFloat(row.price?.toString() ?? "");
 
       if (!suppliername || !itemname || !quantity || isNaN(quantity)) {
         failedItems.push({ ...row, reason: "Missing or invalid data" });
@@ -245,7 +248,7 @@ export const uploadOpeningStockItems = async (req: Request, res: Response) => {
           data: {
             supplierId: supplier.id,
             itemName: itemname,
-            price: 0,
+            price: price,
           },
         });
       } else {
@@ -294,7 +297,7 @@ export const uploadOpeningStockItems = async (req: Request, res: Response) => {
           quantity,
           receivedQty: quantity,
           soldQty: 0,
-          unitPrice: 0,
+          unitPrice: price,
         },
       });
 

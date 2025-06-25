@@ -20,14 +20,34 @@ export const createSupplier = async (req: Request, res: Response) => {
       return;
     }
 
+    // Check for existing supplier with same name under the same company
+    const existingSupplier = await prisma.supplier.findFirst({
+      where: {
+        suppliername: suppliername,
+        companyId: companyId,
+      },
+    });
+
+    if (existingSupplier) {
+      res.status(409).json({
+        error: "Supplier with this name already exists.",
+      });
+      return;
+    }
+
     const supplier = await prisma.supplier.create({
       data: { suppliername, contact, country, companyId },
     });
 
     res.status(201).json(supplier);
+    return;
   } catch (err) {
     console.error("Failed to create supplier:", err);
-    res.status(400).json({ error: "Failed to create supplier", detail: err });
+    res.status(500).json({
+      error: "Failed to create supplier",
+      detail: err instanceof Error ? err.message : err,
+    });
+    return;
   }
 };
 
