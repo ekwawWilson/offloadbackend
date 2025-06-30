@@ -267,7 +267,6 @@ const uploadOpeningStockItems = async (req, res) => {
                 where: {
                     containerId: container.id,
                     itemName: itemname,
-                    unitPrice: price,
                 },
             });
             if (containerItem) {
