@@ -280,6 +280,7 @@ export const uploadOpeningStockItems = async (req: Request, res: Response) => {
         where: {
           containerId: container.id,
           itemName: itemname,
+          unitPrice: price,
         },
       });
 
