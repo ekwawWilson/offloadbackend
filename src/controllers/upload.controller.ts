@@ -184,7 +184,7 @@ export const uploadOpeningBalances = async (
 };
 
 // POST /upload/opening-stock
-export const uploadOpeningStockItems = async (req: Request, res: Response) => {
+/*export const uploadOpeningStockItems = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
       res.status(400).json({ error: "Excel file is required." });
@@ -314,5 +314,139 @@ export const uploadOpeningStockItems = async (req: Request, res: Response) => {
     console.error("Upload failed:", error);
     res.status(500).json({ error: "Upload failed." });
     return;
+  }
+}; */
+
+export const uploadOpeningStockItems = async (req: Request, res: Response) => {
+  try {
+    if (!req.file) {
+      res.status(400).json({ error: "Excel file is required." });
+      return;
+    }
+
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      res.status(400).json({ error: "Missing company context." });
+      return;
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<{
+      openingstock: string;
+      suppliername: string;
+      itemname: string;
+      quantity: number;
+      price: number;
+    }>(sheet);
+
+    let addedItems = 0;
+    let skippedItems = 0;
+    const failedItems: any[] = [];
+
+    for (const row of rows) {
+      const containerNo =
+        row.openingstock?.toString().trim().toLowerCase() || "openingstock";
+      const suppliername = row.suppliername?.toString().trim();
+      const itemname = row.itemname?.toString().trim();
+      const quantity = Number(row.quantity);
+      const price = parseFloat(row.price?.toString() ?? "");
+
+      if (!suppliername || !itemname || !quantity || isNaN(quantity)) {
+        failedItems.push({ ...row, reason: "Missing or invalid data" });
+        continue;
+      }
+
+      // 🔍 Find or create supplier
+      let supplier = await prisma.supplier.findFirst({
+        where: { suppliername, companyId },
+      });
+
+      if (!supplier) {
+        supplier = await prisma.supplier.create({
+          data: {
+            suppliername,
+            contact: "",
+            country: "",
+            companyId,
+          },
+        });
+      }
+
+      // 🔍 Check if SupplierItem exists
+      const supplierItem = await prisma.supplierItem.findFirst({
+        where: { supplierId: supplier.id, itemName: itemname },
+      });
+
+      if (!supplierItem) {
+        await prisma.supplierItem.create({
+          data: {
+            supplierId: supplier.id,
+            itemName: itemname,
+            price: price,
+          },
+        });
+      } else {
+        skippedItems++;
+        failedItems.push({ ...row, reason: "Supplier item already exists" });
+        continue;
+      }
+
+      // 🔍 Find or create container for this openingstock group
+      let container = await prisma.container.findFirst({
+        where: { containerNo, companyId },
+      });
+
+      if (!container) {
+        container = await prisma.container.create({
+          data: {
+            containerNo,
+            arrivalDate: new Date(),
+            year: new Date().getFullYear(),
+            status: "Completed",
+            supplierId: supplier.id, // may not matter for grouped logic
+            companyId,
+          },
+        });
+      }
+
+      // 🔍 Check if item already added to this container
+      const containerItem = await prisma.containerItem.findFirst({
+        where: {
+          containerId: container.id,
+          itemName: itemname,
+        },
+      });
+
+      if (containerItem) {
+        skippedItems++;
+        failedItems.push({ ...row, reason: "Item already in container" });
+        continue;
+      }
+
+      // ✅ Add item to container
+      await prisma.containerItem.create({
+        data: {
+          containerId: container.id,
+          itemName: itemname,
+          quantity,
+          receivedQty: quantity,
+          soldQty: 0,
+          unitPrice: price,
+        },
+      });
+
+      addedItems++;
+    }
+
+    res.status(201).json({
+      message: "Opening stock upload completed.",
+      addedItems,
+      skippedItems,
+      failedItems,
+    });
+  } catch (error) {
+    console.error("Upload failed:", error);
+    res.status(500).json({ error: "Upload failed." });
   }
 };

@@ -30,6 +30,7 @@ export const getContainers = async (req: Request, res: Response) => {
     return;
   }
 };
+
 export const createContainer = async (req: Request, res: Response) => {
   try {
     const { containerNo, arrivalDate, year, supplierId, items } = req.body;
