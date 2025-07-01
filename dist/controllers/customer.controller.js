@@ -64,6 +64,7 @@ const getCustomers = async (req, res) => {
                     select: { amount: true },
                 },
             },
+            orderBy: { customerName: "asc" },
         });
         // Calculate balance dynamically
         const enrichedCustomers = customers.map((customer) => {

@@ -66,6 +66,7 @@ export const getCustomers = async (req: Request, res: Response) => {
           select: { amount: true },
         },
       },
+      orderBy: { customerName: "asc" },
     });
 
     // Calculate balance dynamically
