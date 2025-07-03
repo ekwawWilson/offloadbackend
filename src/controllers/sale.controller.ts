@@ -172,3 +172,88 @@ export const updateSaleTotalAmount = async (req: Request, res: Response) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+// GET /sales
+export const listSales = async (req: Request, res: Response) => {
+  try {
+    const companyId = req.user?.companyId;
+    const { startDate, endDate } = req.query;
+
+    const whereClause: any = {
+      companyId,
+    };
+
+    if (startDate || endDate) {
+      whereClause.createdAt = {};
+      if (startDate) {
+        whereClause.createdAt.gte = new Date(startDate as string);
+      }
+      if (endDate) {
+        const end = new Date(endDate as string);
+        end.setHours(23, 59, 59, 999); // include entire end day
+        whereClause.createdAt.lte = end;
+      }
+    }
+
+    const sales = await prisma.sale.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+        customer: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const response = sales.map((sale) => ({
+      id: sale.id,
+      saleType: sale.saleType,
+      sourceType: sale.sourceType,
+      customerName: sale.customer.customerName,
+      totalAmount: sale.totalAmount,
+      createdAt: sale.createdAt,
+      items: sale.items.map((i) => ({
+        itemName: i.itemName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+      })),
+    }));
+
+    res.json(response);
+  } catch (error) {
+    console.error("Failed to list sales", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+// DELETE /sales/:id
+export const deleteSaleById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const companyId = req.user?.companyId;
+
+  try {
+    // Optional: validate ownership
+    const sale = await prisma.sale.findUnique({
+      where: { id },
+    });
+
+    if (!sale || sale.companyId !== companyId) {
+      res.status(404).json({ error: "Sale not found" });
+      return;
+    }
+
+    // Delete related sale items first
+    await prisma.saleItem.deleteMany({
+      where: { saleId: id },
+    });
+
+    // Then delete the sale
+    await prisma.sale.delete({
+      where: { id },
+    });
+
+    res.json({ message: "Sale deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete sale", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};

@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateSaleTotalAmount = exports.updateSale = exports.getSaleById = exports.getSalesByCustomerId = exports.getContainerItemsBySupplier = exports.getSales = exports.recordSale = void 0;
+exports.deleteSaleById = exports.listSales = exports.updateSaleTotalAmount = exports.updateSale = exports.getSaleById = exports.getSalesByCustomerId = exports.getContainerItemsBySupplier = exports.getSales = exports.recordSale = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const recordSale = async (req, res) => {
     const { saleType, sourceType, sourceId, customerId, items } = req.body;
@@ -165,3 +165,80 @@ const updateSaleTotalAmount = async (req, res) => {
     }
 };
 exports.updateSaleTotalAmount = updateSaleTotalAmount;
+// GET /sales
+const listSales = async (req, res) => {
+    try {
+        const companyId = req.user?.companyId;
+        const { startDate, endDate } = req.query;
+        const whereClause = {
+            companyId,
+        };
+        if (startDate || endDate) {
+            whereClause.createdAt = {};
+            if (startDate) {
+                whereClause.createdAt.gte = new Date(startDate);
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setHours(23, 59, 59, 999); // include entire end day
+                whereClause.createdAt.lte = end;
+            }
+        }
+        const sales = await prisma_1.default.sale.findMany({
+            where: whereClause,
+            include: {
+                items: true,
+                customer: true,
+            },
+            orderBy: { createdAt: "desc" },
+        });
+        const response = sales.map((sale) => ({
+            id: sale.id,
+            saleType: sale.saleType,
+            sourceType: sale.sourceType,
+            customerName: sale.customer.customerName,
+            totalAmount: sale.totalAmount,
+            createdAt: sale.createdAt,
+            items: sale.items.map((i) => ({
+                itemName: i.itemName,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+            })),
+        }));
+        res.json(response);
+    }
+    catch (error) {
+        console.error("Failed to list sales", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+exports.listSales = listSales;
+// DELETE /sales/:id
+const deleteSaleById = async (req, res) => {
+    const { id } = req.params;
+    const companyId = req.user?.companyId;
+    try {
+        // Optional: validate ownership
+        const sale = await prisma_1.default.sale.findUnique({
+            where: { id },
+        });
+        if (!sale || sale.companyId !== companyId) {
+            res.status(404).json({ error: "Sale not found" });
+            return;
+        }
+        // Delete related sale items first
+        await prisma_1.default.saleItem.deleteMany({
+            where: { saleId: id },
+        });
+        // Then delete the sale
+        await prisma_1.default.sale.delete({
+            where: { id },
+        });
+        res.json({ message: "Sale deleted successfully." });
+    }
+    catch (error) {
+        console.error("Failed to delete sale", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+exports.deleteSaleById = deleteSaleById;
