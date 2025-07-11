@@ -265,8 +265,6 @@ const listSupplierItemsWithSales = async (req, res) => {
                     where: {
                         itemName: cItem.itemName,
                         sale: {
-                            sourceType: "container",
-                            sourceId: cItem.containerId,
                             companyId: cItem.container.companyId,
                         },
                     },

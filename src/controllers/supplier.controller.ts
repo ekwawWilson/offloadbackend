@@ -292,8 +292,6 @@ export const listSupplierItemsWithSales = async (
           where: {
             itemName: cItem.itemName,
             sale: {
-              sourceType: "container",
-              sourceId: cItem.containerId,
               companyId: cItem.container.companyId,
             },
           },
