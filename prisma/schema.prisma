@@ -1,12 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-
 }
 
 datasource db {
@@ -15,43 +8,41 @@ datasource db {
 }
 
 model Company {
-  id         String      @id @default(uuid())
-  companyName       String
-  address    String?
-  phone      String?
-  users      User[]
-  sale       Sale[]
-  custpayment  CustomerPayment[]  
-  customer   Customer[]
-  suppliers  Supplier[] // ✅ Add this
-  containers Container[] // ✅ Add this
-  createdAt  DateTime    @default(now())
+  id          String            @id @default(uuid())
+  address     String?
+  phone       String?
+  createdAt   DateTime          @default(now())
+  companyName String
+  containers  Container[]
+  customer    Customer[]
+  custpayment CustomerPayment[]
+  sale        Sale[]
+  suppliers   Supplier[]
+  users       User[]
 }
 
 model User {
-  id          String   @id @default(uuid())
-  userName    String
-  email       String   @unique
-  password    String
-  role        String   @default("user") // "admin" | "staff" | "viewer"
-  auditLog    AuditLog[]
-  companyId   String
-  company     Company  @relation(fields: [companyId], references: [id])
-  createdAt   DateTime @default(now())
-
+  id        String     @id @default(uuid())
+  email     String     @unique
+  password  String
+  companyId String
+  createdAt DateTime   @default(now())
+  role      String     @default("user")
+  userName  String
+  auditLog  AuditLog[]
+  company   Company    @relation(fields: [companyId], references: [id])
 }
 
-
 model Customer {
-  id        String   @id @default(uuid())
-  customerName      String
-  phone     String
-  balance   Float    @default(0)
-  companyId String
-  sale       Sale[]
-  custpayment  CustomerPayment[]  
-  company   Company  @relation(fields: [companyId], references: [id])
-  createdAt DateTime @default(now())
+  id           String            @id @default(uuid())
+  phone        String
+  balance      Float             @default(0)
+  companyId    String
+  createdAt    DateTime          @default(now())
+  customerName String
+  company      Company           @relation(fields: [companyId], references: [id])
+  custpayment  CustomerPayment[]
+  sale         Sale[]
 }
 
 model Container {
@@ -62,20 +53,20 @@ model Container {
   status      String          @default("Pending")
   supplierId  String
   companyId   String
-  supplier    Supplier        @relation(fields: [supplierId], references: [id])
-  company     Company         @relation(fields: [companyId], references: [id])
-  items       ContainerItem[]
   createdAt   DateTime        @default(now())
+  company     Company         @relation(fields: [companyId], references: [id])
+  supplier    Supplier        @relation(fields: [supplierId], references: [id])
+  items       ContainerItem[]
 }
 
 model ContainerItem {
   id          String    @id @default(uuid())
   containerId String
   itemName    String
-  quantity    Int // Expected quantity
+  quantity    Int
   receivedQty Int       @default(0)
-  soldQty      Int      @default(0) // ✅ Add this if it was missing
   unitPrice   Float
+  soldQty     Int       @default(0)
   container   Container @relation(fields: [containerId], references: [id])
 }
 
@@ -88,40 +79,40 @@ model SupplierItem {
 }
 
 model Supplier {
-  id         String         @id @default(uuid())
-  suppliername       String
-  contact    String
-  country    String
-  companyId  String
-  company    Company        @relation(fields: [companyId], references: [id])
-  items      SupplierItem[]
-  containers Container[] // ✅ Add this
-  createdAt  DateTime       @default(now())
-}
-model Sale {
-  id           String      @id @default(uuid())
-  saleType     String      // "cash" or "credit"
-  sourceType   String      // "container" or "regular"
-  sourceId     String      // containerId or supplierId
-  customerId   String
+  id           String         @id @default(uuid())
+  contact      String
+  country      String
   companyId    String
-  totalAmount  Float
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime       @default(now())
+  suppliername String
+  containers   Container[]
+  company      Company        @relation(fields: [companyId], references: [id])
+  items        SupplierItem[]
+}
 
-  items        SaleItem[]
-  customer     Customer    @relation(fields: [customerId], references: [id])
-  company      Company     @relation(fields: [companyId], references: [id])
+model Sale {
+  id          String     @id @default(uuid())
+  saleType    String
+  sourceType  String
+  sourceId    String
+  customerId  String
+  companyId   String
+  totalAmount Float
+  createdAt   DateTime   @default(now())
+  company     Company    @relation(fields: [companyId], references: [id])
+  customer    Customer   @relation(fields: [customerId], references: [id])
+  items       SaleItem[]
 }
 
 model SaleItem {
-  id        String   @id @default(uuid())
+  id        String @id @default(uuid())
   saleId    String
   itemName  String
   quantity  Int
   unitPrice Float
-
-  sale      Sale     @relation(fields: [saleId], references: [id])
+  sale      Sale   @relation(fields: [saleId], references: [id])
 }
+
 model CustomerPayment {
   id          String   @id @default(uuid())
   customerId  String
@@ -129,19 +120,18 @@ model CustomerPayment {
   amount      Float
   note        String?
   createdAt   DateTime @default(now())
-
-  customer    Customer @relation(fields: [customerId], references: [id])
+  paymentType String?  @db.VarChar
   company     Company  @relation(fields: [companyId], references: [id])
+  customer    Customer @relation(fields: [customerId], references: [id])
 }
+
 model AuditLog {
   id          String   @id @default(uuid())
   userId      String
-  actionType  String   // e.g., CREATE, UPDATE, DELETE
-  entityType  String   // e.g., Sale, Payment, Container
+  actionType  String
+  entityType  String
   entityId    String
   description String
   timestamp   DateTime @default(now())
-
   user        User     @relation(fields: [userId], references: [id])
 }
-

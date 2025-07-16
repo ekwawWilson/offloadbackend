@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 
 export const recordCustomerPayment = async (req: Request, res: Response) => {
-  const { customerId, amount, note } = req.body;
+  const { customerId, amount, note, paymentType } = req.body;
   const companyId = req.user?.companyId;
   if (!companyId) {
     res.status(400).json({ error: "Company ID missing" });
@@ -10,7 +10,7 @@ export const recordCustomerPayment = async (req: Request, res: Response) => {
   }
   try {
     const payment = await prisma.customerPayment.create({
-      data: { customerId, amount, note, companyId },
+      data: { customerId, amount, note, paymentType, companyId },
     });
     res.status(201).json(payment);
   } catch (err) {
