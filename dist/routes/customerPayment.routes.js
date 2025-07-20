@@ -9,7 +9,7 @@ router.post("/", customerPayment_controller_1.recordCustomerPayment);
 router.get("/:id/statement", customerPayment_controller_1.getCustomerStatement);
 /**
  * @swagger
- * payments/{id}/customerpayments:
+ * /payments/{id}/payments:
  *   delete:
  *     summary: Delete a customer payment
  *     tags:
@@ -40,7 +40,7 @@ router.get("/:id/statement", customerPayment_controller_1.getCustomerStatement);
 router.delete("/:id", customerPayment_controller_1.deleteCustomerPayment);
 /**
  * @swagger
- * payments/{customerId}/customerpayments:
+ * /payments/{id}/payments:
  *   get:
  *     summary: Get all customer payments
  *     tags: [Customer Payments]

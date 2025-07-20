@@ -16,7 +16,7 @@ router.get("/:id/statement", getCustomerStatement);
 
 /**
  * @swagger
- * payments/{id}/customerpayments:
+ * /payments/{id}/payments:
  *   delete:
  *     summary: Delete a customer payment
  *     tags:
@@ -48,7 +48,7 @@ router.delete("/:id", deleteCustomerPayment);
 
 /**
  * @swagger
- * payments/{customerId}/customerpayments:
+ * /payments/{id}/payments:
  *   get:
  *     summary: Get all customer payments
  *     tags: [Customer Payments]
