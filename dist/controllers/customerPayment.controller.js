@@ -3,10 +3,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getCustomerStatement = exports.recordCustomerPayment = void 0;
+exports.getCustomerPayments = exports.deleteCustomerPayment = exports.getCustomerStatement = exports.recordCustomerPayment = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const recordCustomerPayment = async (req, res) => {
-    const { customerId, amount, note } = req.body;
+    const { customerId, amount, note, paymentType } = req.body;
     const companyId = req.user?.companyId;
     if (!companyId) {
         res.status(400).json({ error: "Company ID missing" });
@@ -14,7 +14,7 @@ const recordCustomerPayment = async (req, res) => {
     }
     try {
         const payment = await prisma_1.default.customerPayment.create({
-            data: { customerId, amount, note, companyId },
+            data: { customerId, amount, note, paymentType, companyId },
         });
         res.status(201).json(payment);
     }
@@ -67,3 +67,43 @@ const getCustomerStatement = async (req, res) => {
     res.json(statement);
 };
 exports.getCustomerStatement = getCustomerStatement;
+const deleteCustomerPayment = async (req, res) => {
+    const paymentId = req.params.id;
+    try {
+        // Check if payment exists
+        const existingPayment = await prisma_1.default.customerPayment.findUnique({
+            where: { id: paymentId },
+        });
+        if (!existingPayment) {
+            res.status(404).json({ error: "Payment not found" });
+            return;
+        }
+        // Delete the payment
+        await prisma_1.default.customerPayment.delete({
+            where: { id: paymentId },
+        });
+        res.json({ message: "Payment deleted successfully" });
+        return;
+    }
+    catch (error) {
+        console.error("Failed to delete payment:", error);
+        res.status(500).json({ error: "Failed to delete payment" });
+        return;
+    }
+};
+exports.deleteCustomerPayment = deleteCustomerPayment;
+const getCustomerPayments = async (req, res) => {
+    const { customerId } = req.params;
+    try {
+        const payments = await prisma_1.default.customerPayment.findMany({
+            where: { customerId },
+            orderBy: { createdAt: "desc" },
+        });
+        res.json(payments);
+    }
+    catch (error) {
+        console.error("Error fetching customer payments:", error);
+        res.status(500).json({ error: "Failed to fetch customer payments" });
+    }
+};
+exports.getCustomerPayments = getCustomerPayments;
