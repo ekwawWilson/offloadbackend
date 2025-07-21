@@ -95,7 +95,7 @@ export const deleteCustomerPayment = async (req: Request, res: Response) => {
   }
 };
 export const getCustomerPayments = async (req: Request, res: Response) => {
-  const { customerId } = req.params;
+  const { id } = req.params;
   const companyId = req.user?.companyId;
 
   if (!companyId) {
@@ -106,7 +106,7 @@ export const getCustomerPayments = async (req: Request, res: Response) => {
   try {
     const payments = await prisma.customerPayment.findMany({
       where: {
-        customerId,
+        customerId: id,
         companyId,
       },
       orderBy: { createdAt: "desc" },
