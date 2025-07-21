@@ -96,10 +96,19 @@ export const deleteCustomerPayment = async (req: Request, res: Response) => {
 };
 export const getCustomerPayments = async (req: Request, res: Response) => {
   const { customerId } = req.params;
+  const companyId = req.user?.companyId;
+
+  if (!companyId) {
+    res.status(400).json({ error: "Missing company context." });
+    return;
+  }
 
   try {
     const payments = await prisma.customerPayment.findMany({
-      where: { customerId },
+      where: {
+        customerId,
+        companyId,
+      },
       orderBy: { createdAt: "desc" },
     });
 
