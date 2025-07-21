@@ -16,7 +16,7 @@ router.get("/:id/statement", getCustomerStatement);
 
 /**
  * @swagger
- * /payments/{id}/payments:
+ * /payments/{id}/customerpayments:
  *   delete:
  *     summary: Delete a customer payment
  *     tags:
@@ -44,7 +44,7 @@ router.get("/:id/statement", getCustomerStatement);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", deleteCustomerPayment);
+router.delete("/:id/customerpayments", deleteCustomerPayment);
 
 /**
  * @swagger

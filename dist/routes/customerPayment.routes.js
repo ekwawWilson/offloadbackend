@@ -9,7 +9,7 @@ router.post("/", customerPayment_controller_1.recordCustomerPayment);
 router.get("/:id/statement", customerPayment_controller_1.getCustomerStatement);
 /**
  * @swagger
- * /payments/{id}/payments:
+ * /payments/{id}/customerpayments:
  *   delete:
  *     summary: Delete a customer payment
  *     tags:
@@ -37,7 +37,7 @@ router.get("/:id/statement", customerPayment_controller_1.getCustomerStatement);
  *       500:
  *         description: Server error
  */
-router.delete("/:id", customerPayment_controller_1.deleteCustomerPayment);
+router.delete("/:id/customerpayments", customerPayment_controller_1.deleteCustomerPayment);
 /**
  * @swagger
  * /payments/{id}/payments:
