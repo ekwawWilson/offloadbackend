@@ -11,68 +11,12 @@ router.use(auth_middleware_1.authenticate);
  *   get:
  *     tags:
  *       - Containers
- *     summary: Get paginated list of containers with optional search
+ *     summary: Get all containers for the logged-in company
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: page
- *         schema:
- *           type: integer
- *           default: 1
- *         description: Page number for pagination (5 items per page)
- *       - in: query
- *         name: search
- *         schema:
- *           type: string
- *         description: Search term to filter by container number or supplier name
  *     responses:
  *       200:
- *         description: A paginated list of containers
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                       containerNo:
- *                         type: string
- *                       arrivalDate:
- *                         type: string
- *                         format: date-time
- *                       year:
- *                         type: integer
- *                       supplier:
- *                         type: object
- *                         properties:
- *                           id:
- *                             type: string
- *                           suppliername:
- *                             type: string
- *                           country:
- *                             type: string
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     total:
- *                       type: integer
- *                     page:
- *                       type: integer
- *                     pageSize:
- *                       type: integer
- *                       example: 5
- *                     totalPages:
- *                       type: integer
- *       400:
- *         description: Missing or invalid company ID
- *       500:
- *         description: Internal server error
+ *         description: List of containers
  */
 router.get("/", container_controller_1.getContainers);
 /**

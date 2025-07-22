@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import prisma from "../utils/prisma";
-import { Prisma } from "@prisma/client";
 
 export const getContainers = async (req: Request, res: Response) => {
   try {
@@ -11,56 +10,24 @@ export const getContainers = async (req: Request, res: Response) => {
       return;
     }
 
-    const page = parseInt(req.query.page as string) || 1;
-    const search = (req.query.search as string) || "";
-    const PAGE_SIZE = 5;
-
-    const whereClause: Prisma.ContainerWhereInput = {
-      companyId,
-      ...(search && {
-        OR: [
-          {
-            containerNo: {
-              contains: search,
-              mode: "insensitive",
-            },
-          },
-          {
-            supplier: {
-              suppliername: {
-                contains: search,
-                mode: "insensitive",
-              },
-            },
-          },
-        ] as Prisma.ContainerWhereInput[], // 👈 Explicit cast
-      }),
-    };
-
-    const [containers, total] = await Promise.all([
-      prisma.container.findMany({
-        where: whereClause,
-        include: {
-          supplier: {
-            select: { id: true, suppliername: true, country: true },
-          },
+    const containers = await prisma.container.findMany({
+      where: {
+        companyId,
+      },
+      include: {
+        supplier: {
+          select: { id: true, suppliername: true, country: true }, // Avoid exposing all supplier data
         },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
-      prisma.container.count({ where: whereClause }),
-    ]);
-
-    res.json({
-      data: containers,
-      currentPage: page,
-      totalPages: Math.ceil(total / PAGE_SIZE),
-      total,
+      },
+      orderBy: { createdAt: "desc" },
     });
+
+    res.json(containers);
+    return;
   } catch (error) {
     console.error("Error fetching containers:", error);
     res.status(500).json({ error: "Internal server error" });
+    return;
   }
 };
 
