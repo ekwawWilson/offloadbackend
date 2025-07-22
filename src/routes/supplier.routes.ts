@@ -265,6 +265,52 @@ router.get("/list", getSupplierslist);
  */
 router.get("/allsuppliers", getSuppliers);
 
+/**
+ * @swagger
+ * /suppliers/items/withsales:
+ *   get:
+ *     summary: Get supplier items with total, sold, and remaining quantities
+ *     tags:
+ *       - Supplier Items
+ *     description: |
+ *       Retrieves all supplier items along with total quantities supplied,
+ *       quantities sold, and remaining quantities. Matches items by supplier and item name.
+ *     responses:
+ *       200:
+ *         description: List of supplier items with sales summary
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     description: ID of the supplier item
+ *                   itemName:
+ *                     type: string
+ *                     description: Name of the item
+ *                   supplierName:
+ *                     type: string
+ *                     description: Name of the supplier
+ *                   quantity:
+ *                     type: number
+ *                     description: Total quantity supplied
+ *                   soldQty:
+ *                     type: number
+ *                     description: Total quantity sold
+ *                   remainingQty:
+ *                     type: number
+ *                     description: Quantity remaining in stock
+ *                   price:
+ *                     type: number
+ *                     format: float
+ *                     description: Current unit price
+ *       500:
+ *         description: Internal server error
+ */
+
 router.get("/items/withsales", listSupplierItemsWithSales);
 
 export default router;

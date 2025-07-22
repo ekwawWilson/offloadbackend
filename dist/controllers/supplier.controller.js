@@ -236,51 +236,57 @@ const listSupplierItemsWithSales = async (req, res) => {
                 supplier: true,
             },
         });
-        const result = [];
-        for (const sItem of supplierItems) {
-            const { id, itemName, supplier, price } = sItem;
-            const supplierName = supplier?.suppliername || "Unknown";
-            const supplierId = supplier?.id;
-            // Step 2: Get all container items that match the item name and supplier
-            const containerItems = await prisma_1.default.containerItem.findMany({
-                where: {
-                    itemName,
-                    container: {
-                        supplierId,
+        // Step 2: Get all unique itemName/supplierId pairs
+        const supplierItemMap = supplierItems.map((item) => ({
+            id: item.id,
+            itemName: item.itemName,
+            supplierId: item.supplierId,
+            supplierName: item.supplier?.suppliername || "Unknown",
+            price: item.price,
+        }));
+        // Step 3: Fetch all relevant container items in bulk
+        const allContainerItems = await prisma_1.default.containerItem.findMany({
+            include: {
+                container: {
+                    select: {
+                        id: true,
+                        supplierId: true,
+                        companyId: true,
                     },
                 },
-                include: {
-                    container: true,
+            },
+        });
+        // Step 4: Fetch all sale items in bulk
+        const allSaleItems = await prisma_1.default.saleItem.findMany({
+            select: {
+                itemName: true,
+                quantity: true,
+                sale: {
+                    select: {
+                        companyId: true,
+                    },
                 },
-            });
-            let totalQty = 0;
-            let soldQty = 0;
-            for (const cItem of containerItems) {
-                totalQty += cItem.quantity;
-                // Step 3: Aggregate sold quantity from sale items
-                const sales = await prisma_1.default.saleItem.aggregate({
-                    _sum: {
-                        quantity: true,
-                    },
-                    where: {
-                        itemName: cItem.itemName,
-                        sale: {
-                            companyId: cItem.container.companyId,
-                        },
-                    },
-                });
-                soldQty += sales._sum.quantity || 0;
-            }
-            result.push({
-                id, // <-- supplierItem.id added here
-                itemName,
-                supplierName,
+            },
+        });
+        // Step 5: Compute result per supplier item
+        const result = supplierItemMap.map((sItem) => {
+            const relatedContainers = allContainerItems.filter((c) => c.itemName === sItem.itemName &&
+                c.container?.supplierId === sItem.supplierId);
+            const totalQty = relatedContainers.reduce((sum, c) => sum + c.quantity, 0);
+            const relatedCompanyIds = relatedContainers.map((c) => c.container?.companyId);
+            const relatedSales = allSaleItems.filter((s) => s.itemName === sItem.itemName &&
+                relatedCompanyIds.includes(s.sale.companyId));
+            const soldQty = relatedSales.reduce((sum, s) => sum + (s.quantity || 0), 0);
+            return {
+                id: sItem.id,
+                itemName: sItem.itemName,
+                supplierName: sItem.supplierName,
                 quantity: totalQty,
                 soldQty,
                 remainingQty: totalQty - soldQty,
-                price,
-            });
-        }
+                price: sItem.price,
+            };
+        });
         res.json(result);
     }
     catch (error) {
