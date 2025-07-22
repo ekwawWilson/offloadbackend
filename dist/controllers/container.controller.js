@@ -272,6 +272,7 @@ const listContainerItemsWithSales = async (req, res) => {
                 remainingQty,
                 unitPrice: item.unitPrice,
                 supplierName,
+                containerNo: container.containerNo, // ✅ Added here
             };
         });
         res.json(result);

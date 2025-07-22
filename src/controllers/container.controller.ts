@@ -313,6 +313,7 @@ export const listContainerItemsWithSales = async (
         remainingQty,
         unitPrice: item.unitPrice,
         supplierName,
+        containerNo: container.containerNo, // ✅ Added here
       };
     });
 
