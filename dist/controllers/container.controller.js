@@ -12,24 +12,54 @@ const getContainers = async (req, res) => {
             res.status(400).json({ error: "Company ID is required" });
             return;
         }
-        const containers = await prisma_1.default.container.findMany({
-            where: {
-                companyId,
-            },
-            include: {
-                supplier: {
-                    select: { id: true, suppliername: true, country: true }, // Avoid exposing all supplier data
+        const page = parseInt(req.query.page) || 1;
+        const search = req.query.search || "";
+        const PAGE_SIZE = 5;
+        const whereClause = {
+            companyId,
+            ...(search && {
+                OR: [
+                    {
+                        containerNo: {
+                            contains: search,
+                            mode: "insensitive",
+                        },
+                    },
+                    {
+                        supplier: {
+                            suppliername: {
+                                contains: search,
+                                mode: "insensitive",
+                            },
+                        },
+                    },
+                ], // 👈 Explicit cast
+            }),
+        };
+        const [containers, total] = await Promise.all([
+            prisma_1.default.container.findMany({
+                where: whereClause,
+                include: {
+                    supplier: {
+                        select: { id: true, suppliername: true, country: true },
+                    },
                 },
-            },
-            orderBy: { createdAt: "desc" },
+                orderBy: { createdAt: "desc" },
+                skip: (page - 1) * PAGE_SIZE,
+                take: PAGE_SIZE,
+            }),
+            prisma_1.default.container.count({ where: whereClause }),
+        ]);
+        res.json({
+            data: containers,
+            currentPage: page,
+            totalPages: Math.ceil(total / PAGE_SIZE),
+            total,
         });
-        res.json(containers);
-        return;
     }
     catch (error) {
         console.error("Error fetching containers:", error);
         res.status(500).json({ error: "Internal server error" });
-        return;
     }
 };
 exports.getContainers = getContainers;
