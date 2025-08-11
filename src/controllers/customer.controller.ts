@@ -216,7 +216,7 @@ export const getCustomerStatement = async (req: Request, res: Response) => {
     const companyId = req.user?.companyId;
 
     const sales = await prisma.sale.findMany({
-      where: { customerId, companyId },
+      where: { customerId, companyId, saleType: "credit" },
       select: {
         id: true,
         createdAt: true,
