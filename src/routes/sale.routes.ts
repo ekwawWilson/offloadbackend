@@ -112,6 +112,9 @@ router.put("/:id/total", updateSaleTotalAmount);
  */
 router.get("/listsales", listSales);
 
+// Also add this route for better REST compliance
+router.get("/list", listSales);
+
 /**
  * @swagger
  * /sales/deletesales/{id}:

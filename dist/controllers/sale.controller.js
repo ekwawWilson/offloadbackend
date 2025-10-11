@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.deleteSaleById = exports.listSales = exports.updateSaleTotalAmount = exports.updateSale = exports.getSaleById = exports.getSalesByCustomerId = exports.getContainerItemsBySupplier = exports.getSales = exports.recordSale = void 0;
 const prisma_1 = __importDefault(require("../utils/prisma"));
 const recordSale = async (req, res) => {
-    const { saleType, sourceType, sourceId, customerId, items } = req.body;
+    const { saleType, sourceType, sourceId, customerId, items, saleDate } = req.body;
     const companyId = req.user?.companyId;
     if (!companyId) {
         res.status(400).json({ error: "Company ID missing" });
@@ -14,6 +14,15 @@ const recordSale = async (req, res) => {
     }
     const totalAmount = items.reduce((sum, i) => sum + i.unitPrice * i.quantity, 0);
     try {
+        // Parse sale date if provided, otherwise use current date
+        const parsedSaleDate = saleDate ? new Date(saleDate) : new Date();
+        console.log('Recording sale with date:', {
+            originalSaleDate: saleDate,
+            parsedSaleDate,
+            customerId,
+            totalAmount,
+            itemsCount: items?.length
+        });
         const sale = await prisma_1.default.sale.create({
             data: {
                 saleType,
@@ -22,6 +31,7 @@ const recordSale = async (req, res) => {
                 customerId,
                 companyId,
                 totalAmount,
+                createdAt: parsedSaleDate, // Use custom sale date
                 items: {
                     createMany: {
                         data: items.map((i) => ({
@@ -42,12 +52,78 @@ const recordSale = async (req, res) => {
 };
 exports.recordSale = recordSale;
 const getSales = async (req, res) => {
-    const companyId = req.user?.companyId;
-    const sales = await prisma_1.default.sale.findMany({
-        where: { companyId },
-        include: { items: true, customer: true },
-    });
-    res.json(sales);
+    try {
+        const companyId = req.user?.companyId;
+        if (!companyId) {
+            res.status(400).json({ error: "Company ID missing" });
+            return;
+        }
+        const { startDate, endDate } = req.query;
+        console.log('getSales - Date filtering parameters:', { startDate, endDate, companyId });
+        const whereClause = {
+            companyId,
+        };
+        if (startDate || endDate) {
+            whereClause.createdAt = {};
+            if (startDate) {
+                const start = new Date(startDate);
+                if (isNaN(start.getTime())) {
+                    res.status(400).json({ error: "Invalid start date format" });
+                    return;
+                }
+                start.setHours(0, 0, 0, 0); // include entire start day
+                whereClause.createdAt.gte = start;
+            }
+            if (endDate) {
+                const end = new Date(endDate);
+                if (isNaN(end.getTime())) {
+                    res.status(400).json({ error: "Invalid end date format" });
+                    return;
+                }
+                end.setHours(23, 59, 59, 999); // include entire end day
+                whereClause.createdAt.lte = end;
+            }
+            // Validate date range
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                if (start > end) {
+                    res.status(400).json({ error: "Start date cannot be after end date" });
+                    return;
+                }
+            }
+        }
+        console.log('getSales - Final where clause:', JSON.stringify(whereClause, null, 2));
+        const sales = await prisma_1.default.sale.findMany({
+            where: whereClause,
+            include: {
+                items: true,
+                customer: true,
+            },
+            orderBy: { createdAt: "desc" },
+        });
+        console.log(`getSales - Found ${sales.length} sales matching criteria`);
+        const response = sales.map((sale) => ({
+            id: sale.id,
+            saleType: sale.saleType,
+            sourceType: sale.sourceType,
+            customer: {
+                customerName: sale.customer.customerName,
+            },
+            totalAmount: sale.totalAmount,
+            createdAt: sale.createdAt,
+            items: sale.items.map((i) => ({
+                itemName: i.itemName,
+                quantity: i.quantity,
+                unitPrice: i.unitPrice,
+            })),
+        }));
+        res.json(response);
+    }
+    catch (error) {
+        console.error("Failed to get sales", error);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
 };
 exports.getSales = getSales;
 const getContainerItemsBySupplier = async (req, res) => {
@@ -169,21 +245,46 @@ exports.updateSaleTotalAmount = updateSaleTotalAmount;
 const listSales = async (req, res) => {
     try {
         const companyId = req.user?.companyId;
+        if (!companyId) {
+            res.status(400).json({ error: "Company ID missing" });
+            return;
+        }
         const { startDate, endDate } = req.query;
+        console.log('Date filtering parameters:', { startDate, endDate, companyId });
         const whereClause = {
             companyId,
         };
         if (startDate || endDate) {
             whereClause.createdAt = {};
             if (startDate) {
-                whereClause.createdAt.gte = new Date(startDate);
+                const start = new Date(startDate);
+                if (isNaN(start.getTime())) {
+                    res.status(400).json({ error: "Invalid start date format" });
+                    return;
+                }
+                start.setHours(0, 0, 0, 0); // include entire start day
+                whereClause.createdAt.gte = start;
             }
             if (endDate) {
                 const end = new Date(endDate);
+                if (isNaN(end.getTime())) {
+                    res.status(400).json({ error: "Invalid end date format" });
+                    return;
+                }
                 end.setHours(23, 59, 59, 999); // include entire end day
                 whereClause.createdAt.lte = end;
             }
+            // Validate date range
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                if (start > end) {
+                    res.status(400).json({ error: "Start date cannot be after end date" });
+                    return;
+                }
+            }
         }
+        console.log('Final where clause:', JSON.stringify(whereClause, null, 2));
         const sales = await prisma_1.default.sale.findMany({
             where: whereClause,
             include: {
@@ -192,11 +293,14 @@ const listSales = async (req, res) => {
             },
             orderBy: { createdAt: "desc" },
         });
+        console.log(`Found ${sales.length} sales matching criteria`);
         const response = sales.map((sale) => ({
             id: sale.id,
             saleType: sale.saleType,
             sourceType: sale.sourceType,
-            customerName: sale.customer.customerName,
+            customer: {
+                customerName: sale.customer.customerName,
+            },
             totalAmount: sale.totalAmount,
             createdAt: sale.createdAt,
             items: sale.items.map((i) => ({

@@ -93,6 +93,8 @@ router.put("/:id/total", sale_controller_1.updateSaleTotalAmount);
  *                     format: date-time
  */
 router.get("/listsales", sale_controller_1.listSales);
+// Also add this route for better REST compliance
+router.get("/list", sale_controller_1.listSales);
 /**
  * @swagger
  * /sales/deletesales/{id}:

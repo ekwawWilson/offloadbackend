@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../utils/prisma";
 
 export const recordSale = async (req: Request, res: Response) => {
-  const { saleType, sourceType, sourceId, customerId, items } = req.body;
+  const { saleType, sourceType, sourceId, customerId, items, saleDate } = req.body;
   const companyId = req.user?.companyId;
   if (!companyId) {
     res.status(400).json({ error: "Company ID missing" });
@@ -14,6 +14,17 @@ export const recordSale = async (req: Request, res: Response) => {
   );
 
   try {
+    // Parse sale date if provided, otherwise use current date
+    const parsedSaleDate = saleDate ? new Date(saleDate) : new Date();
+    
+    console.log('Recording sale with date:', {
+      originalSaleDate: saleDate,
+      parsedSaleDate,
+      customerId,
+      totalAmount,
+      itemsCount: items?.length
+    });
+    
     const sale = await prisma.sale.create({
       data: {
         saleType,
@@ -22,6 +33,7 @@ export const recordSale = async (req: Request, res: Response) => {
         customerId,
         companyId,
         totalAmount,
+        createdAt: parsedSaleDate, // Use custom sale date
         items: {
           createMany: {
             data: items.map((i: any) => ({
@@ -41,12 +53,89 @@ export const recordSale = async (req: Request, res: Response) => {
 };
 
 export const getSales = async (req: Request, res: Response) => {
-  const companyId = req.user?.companyId;
-  const sales = await prisma.sale.findMany({
-    where: { companyId },
-    include: { items: true, customer: true },
-  });
-  res.json(sales);
+  try {
+    const companyId = req.user?.companyId;
+    if (!companyId) {
+      res.status(400).json({ error: "Company ID missing" });
+      return;
+    }
+    
+    const { startDate, endDate } = req.query;
+    
+    console.log('getSales - Date filtering parameters:', { startDate, endDate, companyId });
+
+    const whereClause: any = {
+      companyId,
+    };
+
+    if (startDate || endDate) {
+      whereClause.createdAt = {};
+      
+      if (startDate) {
+        const start = new Date(startDate as string);
+        if (isNaN(start.getTime())) {
+          res.status(400).json({ error: "Invalid start date format" });
+          return;
+        }
+        start.setHours(0, 0, 0, 0); // include entire start day
+        whereClause.createdAt.gte = start;
+      }
+      
+      if (endDate) {
+        const end = new Date(endDate as string);
+        if (isNaN(end.getTime())) {
+          res.status(400).json({ error: "Invalid end date format" });
+          return;
+        }
+        end.setHours(23, 59, 59, 999); // include entire end day
+        whereClause.createdAt.lte = end;
+      }
+      
+      // Validate date range
+      if (startDate && endDate) {
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        if (start > end) {
+          res.status(400).json({ error: "Start date cannot be after end date" });
+          return;
+        }
+      }
+    }
+
+    console.log('getSales - Final where clause:', JSON.stringify(whereClause, null, 2));
+    
+    const sales = await prisma.sale.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+        customer: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    
+    console.log(`getSales - Found ${sales.length} sales matching criteria`);
+
+    const response = sales.map((sale) => ({
+      id: sale.id,
+      saleType: sale.saleType,
+      sourceType: sale.sourceType,
+      customer: {
+        customerName: sale.customer.customerName,
+      },
+      totalAmount: sale.totalAmount,
+      createdAt: sale.createdAt,
+      items: sale.items.map((i) => ({
+        itemName: i.itemName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+      })),
+    }));
+
+    res.json(response);
+  } catch (error) {
+    console.error("Failed to get sales", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
 };
 export const getContainerItemsBySupplier = async (
   req: Request,
@@ -177,7 +266,14 @@ export const updateSaleTotalAmount = async (req: Request, res: Response) => {
 export const listSales = async (req: Request, res: Response) => {
   try {
     const companyId = req.user?.companyId;
+    if (!companyId) {
+      res.status(400).json({ error: "Company ID missing" });
+      return;
+    }
+    
     const { startDate, endDate } = req.query;
+    
+    console.log('Date filtering parameters:', { startDate, endDate, companyId });
 
     const whereClause: any = {
       companyId,
@@ -185,16 +281,40 @@ export const listSales = async (req: Request, res: Response) => {
 
     if (startDate || endDate) {
       whereClause.createdAt = {};
+      
       if (startDate) {
-        whereClause.createdAt.gte = new Date(startDate as string);
+        const start = new Date(startDate as string);
+        if (isNaN(start.getTime())) {
+          res.status(400).json({ error: "Invalid start date format" });
+          return;
+        }
+        start.setHours(0, 0, 0, 0); // include entire start day
+        whereClause.createdAt.gte = start;
       }
+      
       if (endDate) {
         const end = new Date(endDate as string);
+        if (isNaN(end.getTime())) {
+          res.status(400).json({ error: "Invalid end date format" });
+          return;
+        }
         end.setHours(23, 59, 59, 999); // include entire end day
         whereClause.createdAt.lte = end;
       }
+      
+      // Validate date range
+      if (startDate && endDate) {
+        const start = new Date(startDate as string);
+        const end = new Date(endDate as string);
+        if (start > end) {
+          res.status(400).json({ error: "Start date cannot be after end date" });
+          return;
+        }
+      }
     }
 
+    console.log('Final where clause:', JSON.stringify(whereClause, null, 2));
+    
     const sales = await prisma.sale.findMany({
       where: whereClause,
       include: {
@@ -203,12 +323,16 @@ export const listSales = async (req: Request, res: Response) => {
       },
       orderBy: { createdAt: "desc" },
     });
+    
+    console.log(`Found ${sales.length} sales matching criteria`);
 
     const response = sales.map((sale) => ({
       id: sale.id,
       saleType: sale.saleType,
       sourceType: sale.sourceType,
-      customerName: sale.customer.customerName,
+      customer: {
+        customerName: sale.customer.customerName,
+      },
       totalAmount: sale.totalAmount,
       createdAt: sale.createdAt,
       items: sale.items.map((i) => ({
